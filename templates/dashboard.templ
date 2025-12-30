@@ -1,0 +1,375 @@
+package templates
+
+import (
+	"budgetmate/models"
+	"fmt"
+	"encoding/json"
+)
+
+templ Dashboard(data models.DashboardData, navItems []models.NavItem) {
+	@Base("Dashboard", navItems) {
+		<!-- KPI Cards -->
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			@KPICard("Total Balance", formatCurrency(data.Stats.TotalBalance), data.Stats.BalanceChange, true, "balance")
+			@KPICard("Monthly Spend", formatCurrency(data.Stats.MonthlySpend), data.Stats.SpendChange, false, "spend")
+			@KPICard("Budget Used", formatPercent(data.Stats.BudgetUsed), 0, false, "budget")
+			@KPICard("Total Savings", formatCurrency(data.Stats.TotalSavings), data.Stats.SavingsChange, true, "savings")
+		</div>
+
+		<!-- Chart and Quick Stats Row -->
+		<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+			<!-- Chart Section -->
+			<div class="lg:col-span-2 rounded-md border border-slate-200 bg-white p-6 shadow-sm">
+				<div class="flex items-center justify-between mb-6">
+					<div>
+						<h2 class="text-base font-semibold text-slate-900">Cash Flow Overview</h2>
+						<p class="text-sm text-slate-500">Income vs Expenses</p>
+					</div>
+					<div class="flex items-center gap-4 text-xs">
+						<div class="flex items-center gap-1.5">
+							<span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+							<span class="text-slate-600">Income</span>
+						</div>
+						<div class="flex items-center gap-1.5">
+							<span class="h-2.5 w-2.5 rounded-full bg-slate-400"></span>
+							<span class="text-slate-600">Expenses</span>
+						</div>
+					</div>
+				</div>
+				<div class="h-64">
+					<canvas id="cashFlowChart"></canvas>
+				</div>
+			</div>
+
+			<!-- Budget Progress -->
+			<div class="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
+				<h2 class="text-base font-semibold text-slate-900 mb-6">Budget Status</h2>
+				
+				<div class="space-y-5">
+					@BudgetItem("Operations", 68, formatCurrency(4250), formatCurrency(6250))
+					@BudgetItem("Technology", 45, formatCurrency(2700), formatCurrency(6000))
+					@BudgetItem("Marketing", 82, formatCurrency(4100), formatCurrency(5000))
+					@BudgetItem("Travel", 55, formatCurrency(2750), formatCurrency(5000))
+					@BudgetItem("Payroll", 91, formatCurrency(36400), formatCurrency(40000))
+				</div>
+			</div>
+		</div>
+
+		<!-- Recent Transactions Section -->
+		<div class="mt-6 rounded-md border border-slate-200 bg-white shadow-sm">
+			<div class="border-b border-slate-200 px-6 py-4">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<h2 class="text-base font-semibold text-slate-900">Recent Transactions</h2>
+						<p class="text-sm text-slate-500">Your latest financial activity</p>
+					</div>
+					
+					<!-- Search with HTMX -->
+					<div class="relative">
+						<input 
+							type="search" 
+							name="search"
+							placeholder="Filter transactions..."
+							hx-get="/api/transactions/filter"
+							hx-trigger="keyup changed delay:300ms"
+							hx-target="#transaction-rows"
+							hx-swap="innerHTML"
+							hx-indicator="#search-spinner"
+							class="w-full sm:w-64 rounded-md border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300"
+						/>
+						<svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+						</svg>
+						<svg id="search-spinner" class="htmx-indicator absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+					</div>
+				</div>
+			</div>
+
+			<!-- Transactions Table -->
+			<div class="overflow-x-auto">
+				<table class="w-full border-collapse">
+					<thead>
+						<tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+							<th class="px-6 py-3 border-b border-slate-200">Date</th>
+							<th class="px-6 py-3 border-b border-slate-200">Description</th>
+							<th class="px-6 py-3 border-b border-slate-200">Category</th>
+							<th class="px-6 py-3 border-b border-slate-200">Merchant</th>
+							<th class="px-6 py-3 border-b border-slate-200 text-right">Amount</th>
+							<th class="px-6 py-3 border-b border-slate-200">Status</th>
+						</tr>
+					</thead>
+					<tbody id="transaction-rows" class="divide-y divide-slate-100">
+						@TransactionRows(data.Transactions)
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Table Footer -->
+			<div class="border-t border-slate-200 px-6 py-4">
+				<div class="flex items-center justify-between text-sm">
+					<span class="text-slate-500">Showing { fmt.Sprintf("%d", len(data.Transactions)) } transactions</span>
+					<a href="/transactions" class="font-medium text-slate-900 hover:text-slate-700">
+						View all transactions →
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<!-- Chart.js Initialization -->
+		@ChartScript(data.Chart)
+	}
+}
+
+templ KPICard(title string, value string, change float64, isPositiveGood bool, iconType string) {
+	<div class="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+		<div class="flex items-start justify-between">
+			<div class="flex-1">
+				<p class="text-sm font-medium text-slate-500">{ title }</p>
+				<p class="mt-2 text-2xl font-semibold text-slate-900">{ value }</p>
+				if change != 0 {
+					<div class="mt-2 flex items-center gap-1 text-xs font-medium">
+						if (change > 0 && isPositiveGood) || (change < 0 && !isPositiveGood) {
+							<svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12"/>
+							</svg>
+							<span class="text-emerald-600">{ formatPercent(absFloat(change)) }</span>
+						} else {
+							<svg class="h-4 w-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M17 13l-5 5m0 0l-5-5m5 5V6"/>
+							</svg>
+							<span class="text-rose-600">{ formatPercent(absFloat(change)) }</span>
+						}
+						<span class="text-slate-400">vs last month</span>
+					</div>
+				}
+			</div>
+			<div class={ "flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
+				templ.KV("bg-emerald-50", iconType == "balance" || iconType == "savings"),
+				templ.KV("bg-slate-100", iconType == "spend" || iconType == "budget") }>
+				@KPIIcon(iconType)
+			</div>
+		</div>
+	</div>
+}
+
+templ KPIIcon(iconType string) {
+	switch iconType {
+		case "balance":
+			<svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
+			</svg>
+		case "spend":
+			<svg class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
+			</svg>
+		case "budget":
+			<svg class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"/>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z"/>
+			</svg>
+		case "savings":
+			<svg class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z"/>
+			</svg>
+		default:
+			<svg class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+			</svg>
+	}
+}
+
+templ BudgetItem(name string, percent float64, spent string, total string) {
+	<div>
+		<div class="flex items-center justify-between text-sm mb-2">
+			<span class="font-medium text-slate-700">{ name }</span>
+			<span class="text-slate-500">{ spent } / { total }</span>
+		</div>
+		<div class="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+			<div 
+				class={ "h-full rounded-full transition-all",
+					templ.KV("bg-emerald-500", percent < 75),
+					templ.KV("bg-amber-500", percent >= 75 && percent < 90),
+					templ.KV("bg-rose-500", percent >= 90) }
+				style={ fmt.Sprintf("width: %v%%", percent) }
+			></div>
+		</div>
+	</div>
+}
+
+templ TransactionRows(transactions []models.Transaction) {
+	for _, txn := range transactions {
+		<tr class="hover:bg-slate-50 transition-colors">
+			<td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
+				{ txn.Date.Format("Jan 02, 2006") }
+			</td>
+			<td class="px-6 py-4">
+				<p class="text-sm font-medium text-slate-900">{ txn.Description }</p>
+				<p class="text-xs text-slate-500">{ txn.ID }</p>
+			</td>
+			<td class="whitespace-nowrap px-6 py-4">
+				<span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+					{ txn.Category }
+				</span>
+			</td>
+			<td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
+				{ txn.Merchant }
+			</td>
+			<td class="whitespace-nowrap px-6 py-4 text-sm text-right font-medium">
+				if txn.Type == "credit" {
+					<span class="text-emerald-600">+{ formatCurrency(txn.Amount) }</span>
+				} else {
+					<span class="text-slate-900">-{ formatCurrency(txn.Amount) }</span>
+				}
+			</td>
+			<td class="whitespace-nowrap px-6 py-4">
+				<span class={ "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+					templ.KV("bg-emerald-50 text-emerald-700", txn.Status == "completed"),
+					templ.KV("bg-amber-50 text-amber-700", txn.Status == "pending"),
+					templ.KV("bg-rose-50 text-rose-700", txn.Status == "failed") }>
+					if txn.Status == "completed" {
+						<span class="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+					} else if txn.Status == "pending" {
+						<span class="mr-1 h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+					} else {
+						<span class="mr-1 h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+					}
+					{ txn.Status }
+				</span>
+			</td>
+		</tr>
+	}
+}
+
+templ ChartScript(chart models.SpendingChart) {
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const ctx = document.getElementById('cashFlowChart').getContext('2d');
+			
+			const chartData = {
+				labels: JSON.parse(@templ.JSONString(mustMarshal(chart.Labels))),
+				income: JSON.parse(@templ.JSONString(mustMarshal(chart.Income))),
+				spend: JSON.parse(@templ.JSONString(mustMarshal(chart.Spend)))
+			};
+
+			new Chart(ctx, {
+				type: 'line',
+				data: {
+					labels: chartData.labels,
+					datasets: [
+						{
+							label: 'Income',
+							data: chartData.income,
+							borderColor: '#10b981',
+							backgroundColor: 'rgba(16, 185, 129, 0.1)',
+							borderWidth: 2,
+							fill: true,
+							tension: 0.3,
+							pointRadius: 0,
+							pointHoverRadius: 4,
+							pointHoverBackgroundColor: '#10b981'
+						},
+						{
+							label: 'Expenses',
+							data: chartData.spend,
+							borderColor: '#94a3b8',
+							backgroundColor: 'rgba(148, 163, 184, 0.1)',
+							borderWidth: 2,
+							fill: true,
+							tension: 0.3,
+							pointRadius: 0,
+							pointHoverRadius: 4,
+							pointHoverBackgroundColor: '#94a3b8'
+						}
+					]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					interaction: {
+						mode: 'index',
+						intersect: false
+					},
+					plugins: {
+						legend: {
+							display: false
+						},
+						tooltip: {
+							backgroundColor: '#0f172a',
+							titleColor: '#f8fafc',
+							bodyColor: '#e2e8f0',
+							borderColor: '#334155',
+							borderWidth: 1,
+							cornerRadius: 4,
+							padding: 12,
+							callbacks: {
+								label: function(context) {
+									return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+								}
+							}
+						}
+					},
+					scales: {
+						x: {
+							grid: {
+								display: false
+							},
+							ticks: {
+								color: '#64748b',
+								font: {
+									size: 11
+								}
+							},
+							border: {
+								display: false
+							}
+						},
+						y: {
+							grid: {
+								color: '#f1f5f9',
+								drawBorder: false
+							},
+							ticks: {
+								color: '#64748b',
+								font: {
+									size: 11
+								},
+								callback: function(value) {
+									return '$' + (value / 1000) + 'k';
+								}
+							},
+							border: {
+								display: false
+							}
+						}
+					}
+				}
+			});
+		});
+	</script>
+}
+
+func formatCurrency(amount float64) string {
+	return fmt.Sprintf("$%.2f", amount)
+}
+
+func formatPercent(value float64) string {
+	return fmt.Sprintf("%.1f%%", value)
+}
+
+func absFloat(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func mustMarshal(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
