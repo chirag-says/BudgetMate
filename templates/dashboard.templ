@@ -2,28 +2,29 @@ package templates
 
 import (
 	"budgetmate/models"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"time"
 )
 
-templ Dashboard(data models.DashboardData, navItems []models.NavItem) {
-	@Base("Dashboard", navItems) {
+templ Dashboard(data models.DashboardData, navItems []models.NavItem, budgets []models.BudgetCategory) {
+	@Base("Dashboard", navItems, data) {
 		<!-- KPI Cards -->
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			@KPICard("Total Balance", formatCurrency(data.Stats.TotalBalance), data.Stats.BalanceChange, true, "balance")
-			@KPICard("Monthly Spend", formatCurrency(data.Stats.MonthlySpend), data.Stats.SpendChange, false, "spend")
-			@KPICard("Budget Used", formatPercent(data.Stats.BudgetUsed), 0, false, "budget")
-			@KPICard("Total Savings", formatCurrency(data.Stats.TotalSavings), data.Stats.SavingsChange, true, "savings")
+			@KPICard("Total Balance", formatINR(data.Stats.TotalBalance), formatLakhs(data.Stats.TotalBalance), data.Stats.BalanceChange, true, "balance")
+			@KPICard("Monthly Spend", formatINR(data.Stats.MonthlySpend), formatLakhs(data.Stats.MonthlySpend), data.Stats.SpendChange, false, "spend")
+			@KPICard("Budget Left", formatINR(data.Stats.BudgetRemaining), "", 0, false, "budget")
+			@KPICard("Total Savings", formatINR(data.Stats.TotalSavings), formatLakhs(data.Stats.TotalSavings), data.Stats.SavingsChange, true, "savings")
 		</div>
 
-		<!-- Chart and Quick Stats Row -->
+		<!-- Chart and Budget Status Row -->
 		<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
 			<!-- Chart Section -->
 			<div class="lg:col-span-2 rounded-md border border-slate-200 bg-white p-6 shadow-sm">
 				<div class="flex items-center justify-between mb-6">
 					<div>
 						<h2 class="text-base font-semibold text-slate-900">Cash Flow Overview</h2>
-						<p class="text-sm text-slate-500">Income vs Expenses</p>
+						<p class="text-sm text-slate-500">Income vs Expenses (in ₹)</p>
 					</div>
 					<div class="flex items-center gap-4 text-xs">
 						<div class="flex items-center gap-1.5">
@@ -43,14 +44,31 @@ templ Dashboard(data models.DashboardData, navItems []models.NavItem) {
 
 			<!-- Budget Progress -->
 			<div class="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
-				<h2 class="text-base font-semibold text-slate-900 mb-6">Budget Status</h2>
+				<div class="flex items-center justify-between mb-6">
+					<h2 class="text-base font-semibold text-slate-900">Budget Status</h2>
+					<span class="text-xs font-medium text-slate-500">This month</span>
+				</div>
 				
-				<div class="space-y-5">
-					@BudgetItem("Operations", 68, formatCurrency(4250), formatCurrency(6250))
-					@BudgetItem("Technology", 45, formatCurrency(2700), formatCurrency(6000))
-					@BudgetItem("Marketing", 82, formatCurrency(4100), formatCurrency(5000))
-					@BudgetItem("Travel", 55, formatCurrency(2750), formatCurrency(5000))
-					@BudgetItem("Payroll", 91, formatCurrency(36400), formatCurrency(40000))
+				<div class="space-y-4">
+					for _, budget := range budgets {
+						@BudgetItem(budget.Name, budget.Percent, formatINRCompact(budget.Spent), formatINRCompact(budget.Total))
+					}
+				</div>
+
+				<div class="mt-6 pt-4 border-t border-slate-100">
+					<div class="flex items-center justify-between text-sm">
+						<span class="text-slate-600">Overall Budget Used</span>
+						<span class="font-semibold text-slate-900">{ formatPercent(data.Stats.BudgetUsed) }</span>
+					</div>
+					<div class="mt-2 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+						<div 
+							class={ "h-full rounded-full transition-all",
+								templ.KV("bg-emerald-500", data.Stats.BudgetUsed < 75),
+								templ.KV("bg-amber-500", data.Stats.BudgetUsed >= 75 && data.Stats.BudgetUsed < 90),
+								templ.KV("bg-rose-500", data.Stats.BudgetUsed >= 90) }
+							style={ fmt.Sprintf("width: %v%%", data.Stats.BudgetUsed) }
+						></div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -90,7 +108,7 @@ templ Dashboard(data models.DashboardData, navItems []models.NavItem) {
 
 			<!-- Transactions Table -->
 			<div class="overflow-x-auto">
-				<table class="w-full border-collapse">
+				<table class="w-full text-sm text-slate-600">
 					<thead>
 						<tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
 							<th class="px-6 py-3 border-b border-slate-200">Date</th>
@@ -123,12 +141,15 @@ templ Dashboard(data models.DashboardData, navItems []models.NavItem) {
 	}
 }
 
-templ KPICard(title string, value string, change float64, isPositiveGood bool, iconType string) {
+templ KPICard(title string, value string, subvalue string, change float64, isPositiveGood bool, iconType string) {
 	<div class="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
 		<div class="flex items-start justify-between">
 			<div class="flex-1">
 				<p class="text-sm font-medium text-slate-500">{ title }</p>
 				<p class="mt-2 text-2xl font-semibold text-slate-900">{ value }</p>
+				if subvalue != "" {
+					<p class="mt-0.5 text-xs text-slate-400">{ subvalue }</p>
+				}
 				if change != 0 {
 					<div class="mt-2 flex items-center gap-1 text-xs font-medium">
 						if (change > 0 && isPositiveGood) || (change < 0 && !isPositiveGood) {
@@ -183,11 +204,11 @@ templ KPIIcon(iconType string) {
 
 templ BudgetItem(name string, percent float64, spent string, total string) {
 	<div>
-		<div class="flex items-center justify-between text-sm mb-2">
+		<div class="flex items-center justify-between text-sm mb-1.5">
 			<span class="font-medium text-slate-700">{ name }</span>
-			<span class="text-slate-500">{ spent } / { total }</span>
+			<span class="text-slate-500 text-xs">{ spent } / { total }</span>
 		</div>
-		<div class="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+		<div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
 			<div 
 				class={ "h-full rounded-full transition-all",
 					templ.KV("bg-emerald-500", percent < 75),
@@ -203,14 +224,14 @@ templ TransactionRows(transactions []models.Transaction) {
 	for _, txn := range transactions {
 		<tr class="hover:bg-slate-50 transition-colors">
 			<td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
-				{ txn.Date.Format("Jan 02, 2006") }
+				{ formatDateIndian(txn.Date) }
 			</td>
 			<td class="px-6 py-4">
 				<p class="text-sm font-medium text-slate-900">{ txn.Description }</p>
 				<p class="text-xs text-slate-500">{ txn.ID }</p>
 			</td>
 			<td class="whitespace-nowrap px-6 py-4">
-				<span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+				<span class="inline-flex items-center rounded-sm bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
 					{ txn.Category }
 				</span>
 			</td>
@@ -219,13 +240,13 @@ templ TransactionRows(transactions []models.Transaction) {
 			</td>
 			<td class="whitespace-nowrap px-6 py-4 text-sm text-right font-medium">
 				if txn.Type == "credit" {
-					<span class="text-emerald-600">+{ formatCurrency(txn.Amount) }</span>
+					<span class="text-emerald-600">+{ formatINR(txn.Amount) }</span>
 				} else {
-					<span class="text-slate-900">-{ formatCurrency(txn.Amount) }</span>
+					<span class="text-slate-900">-{ formatINR(txn.Amount) }</span>
 				}
 			</td>
 			<td class="whitespace-nowrap px-6 py-4">
-				<span class={ "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+				<span class={ "inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium",
 					templ.KV("bg-emerald-50 text-emerald-700", txn.Status == "completed"),
 					templ.KV("bg-amber-50 text-amber-700", txn.Status == "pending"),
 					templ.KV("bg-rose-50 text-rose-700", txn.Status == "failed") }>
@@ -263,7 +284,7 @@ templ ChartScript(chart models.SpendingChart) {
 							label: 'Income',
 							data: chartData.income,
 							borderColor: '#10b981',
-							backgroundColor: 'rgba(16, 185, 129, 0.1)',
+							backgroundColor: 'rgba(16, 185, 129, 0.08)',
 							borderWidth: 2,
 							fill: true,
 							tension: 0.3,
@@ -275,7 +296,7 @@ templ ChartScript(chart models.SpendingChart) {
 							label: 'Expenses',
 							data: chartData.spend,
 							borderColor: '#94a3b8',
-							backgroundColor: 'rgba(148, 163, 184, 0.1)',
+							backgroundColor: 'rgba(148, 163, 184, 0.08)',
 							borderWidth: 2,
 							fill: true,
 							tension: 0.3,
@@ -306,7 +327,12 @@ templ ChartScript(chart models.SpendingChart) {
 							padding: 12,
 							callbacks: {
 								label: function(context) {
-									return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+									let value = context.parsed.y;
+									// Format in Lakhs for Indian notation
+									if (value >= 100000) {
+										return context.dataset.label + ': ₹' + (value / 100000).toFixed(2) + ' L';
+									}
+									return context.dataset.label + ': ₹' + value.toLocaleString('en-IN');
 								}
 							}
 						}
@@ -337,7 +363,11 @@ templ ChartScript(chart models.SpendingChart) {
 									size: 11
 								},
 								callback: function(value) {
-									return '$' + (value / 1000) + 'k';
+									// Format in Lakhs
+									if (value >= 100000) {
+										return '₹' + (value / 100000) + 'L';
+									}
+									return '₹' + (value / 1000) + 'K';
 								}
 							},
 							border: {
@@ -351,8 +381,42 @@ templ ChartScript(chart models.SpendingChart) {
 	</script>
 }
 
-func formatCurrency(amount float64) string {
-	return fmt.Sprintf("$%.2f", amount)
+// formatINR formats a number as Indian Rupees with proper formatting
+func formatINR(amount float64) string {
+	// Indian numbering system: 1,00,000 format
+	if amount >= 10000000 { // 1 Crore+
+		return fmt.Sprintf("₹%.2f Cr", amount/10000000)
+	}
+	if amount >= 100000 { // 1 Lakh+
+		return fmt.Sprintf("₹%.2f L", amount/100000)
+	}
+	// Standard formatting for smaller amounts
+	return fmt.Sprintf("₹%.2f", amount)
+}
+
+// formatINRCompact formats amount in compact Indian notation
+func formatINRCompact(amount float64) string {
+	if amount >= 10000000 {
+		return fmt.Sprintf("₹%.1f Cr", amount/10000000)
+	}
+	if amount >= 100000 {
+		return fmt.Sprintf("₹%.1f L", amount/100000)
+	}
+	if amount >= 1000 {
+		return fmt.Sprintf("₹%.1fK", amount/1000)
+	}
+	return fmt.Sprintf("₹%.0f", amount)
+}
+
+// formatLakhs returns amount in Lakhs notation
+func formatLakhs(amount float64) string {
+	if amount >= 10000000 {
+		return fmt.Sprintf("(₹%.2f Crore)", amount/10000000)
+	}
+	if amount >= 100000 {
+		return fmt.Sprintf("(₹%.2f Lakh)", amount/100000)
+	}
+	return ""
 }
 
 func formatPercent(value float64) string {
@@ -372,4 +436,9 @@ func mustMarshal(v interface{}) string {
 		return "[]"
 	}
 	return string(b)
+}
+
+// formatDateIndian formats date in DD/MM/YYYY Indian format
+func formatDateIndian(t time.Time) string {
+	return t.Format("02/01/2006")
 }

@@ -12,9 +12,10 @@ import (
 	"budgetmate/models"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
-func Dashboard(data models.DashboardData, navItems []models.NavItem) templ.Component {
+func Dashboard(data models.DashboardData, navItems []models.NavItem, budgets []models.BudgetCategory) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -51,47 +52,84 @@ func Dashboard(data models.DashboardData, navItems []models.NavItem) templ.Compo
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = KPICard("Total Balance", formatCurrency(data.Stats.TotalBalance), data.Stats.BalanceChange, true, "balance").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = KPICard("Total Balance", formatINR(data.Stats.TotalBalance), formatLakhs(data.Stats.TotalBalance), data.Stats.BalanceChange, true, "balance").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = KPICard("Monthly Spend", formatCurrency(data.Stats.MonthlySpend), data.Stats.SpendChange, false, "spend").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = KPICard("Monthly Spend", formatINR(data.Stats.MonthlySpend), formatLakhs(data.Stats.MonthlySpend), data.Stats.SpendChange, false, "spend").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = KPICard("Budget Used", formatPercent(data.Stats.BudgetUsed), 0, false, "budget").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = KPICard("Budget Left", formatINR(data.Stats.BudgetRemaining), "", 0, false, "budget").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = KPICard("Total Savings", formatCurrency(data.Stats.TotalSavings), data.Stats.SavingsChange, true, "savings").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = KPICard("Total Savings", formatINR(data.Stats.TotalSavings), formatLakhs(data.Stats.TotalSavings), data.Stats.SavingsChange, true, "savings").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div><!-- Chart and Quick Stats Row --> <div class=\"mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3\"><!-- Chart Section --><div class=\"lg:col-span-2 rounded-md border border-slate-200 bg-white p-6 shadow-sm\"><div class=\"flex items-center justify-between mb-6\"><div><h2 class=\"text-base font-semibold text-slate-900\">Cash Flow Overview</h2><p class=\"text-sm text-slate-500\">Income vs Expenses</p></div><div class=\"flex items-center gap-4 text-xs\"><div class=\"flex items-center gap-1.5\"><span class=\"h-2.5 w-2.5 rounded-full bg-emerald-500\"></span> <span class=\"text-slate-600\">Income</span></div><div class=\"flex items-center gap-1.5\"><span class=\"h-2.5 w-2.5 rounded-full bg-slate-400\"></span> <span class=\"text-slate-600\">Expenses</span></div></div></div><div class=\"h-64\"><canvas id=\"cashFlowChart\"></canvas></div></div><!-- Budget Progress --><div class=\"rounded-md border border-slate-200 bg-white p-6 shadow-sm\"><h2 class=\"text-base font-semibold text-slate-900 mb-6\">Budget Status</h2><div class=\"space-y-5\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div><!-- Chart and Budget Status Row --> <div class=\"mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3\"><!-- Chart Section --><div class=\"lg:col-span-2 rounded-md border border-slate-200 bg-white p-6 shadow-sm\"><div class=\"flex items-center justify-between mb-6\"><div><h2 class=\"text-base font-semibold text-slate-900\">Cash Flow Overview</h2><p class=\"text-sm text-slate-500\">Income vs Expenses (in ₹)</p></div><div class=\"flex items-center gap-4 text-xs\"><div class=\"flex items-center gap-1.5\"><span class=\"h-2.5 w-2.5 rounded-full bg-emerald-500\"></span> <span class=\"text-slate-600\">Income</span></div><div class=\"flex items-center gap-1.5\"><span class=\"h-2.5 w-2.5 rounded-full bg-slate-400\"></span> <span class=\"text-slate-600\">Expenses</span></div></div></div><div class=\"h-64\"><canvas id=\"cashFlowChart\"></canvas></div></div><!-- Budget Progress --><div class=\"rounded-md border border-slate-200 bg-white p-6 shadow-sm\"><div class=\"flex items-center justify-between mb-6\"><h2 class=\"text-base font-semibold text-slate-900\">Budget Status</h2><span class=\"text-xs font-medium text-slate-500\">This month</span></div><div class=\"space-y-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = BudgetItem("Operations", 68, formatCurrency(4250), formatCurrency(6250)).Render(ctx, templ_7745c5c3_Buffer)
+			for _, budget := range budgets {
+				templ_7745c5c3_Err = BudgetItem(budget.Name, budget.Percent, formatINRCompact(budget.Spent), formatINRCompact(budget.Total)).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><div class=\"mt-6 pt-4 border-t border-slate-100\"><div class=\"flex items-center justify-between text-sm\"><span class=\"text-slate-600\">Overall Budget Used</span> <span class=\"font-semibold text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = BudgetItem("Technology", 45, formatCurrency(2700), formatCurrency(6000)).Render(ctx, templ_7745c5c3_Buffer)
+			var templ_7745c5c3_Var3 string
+			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(formatPercent(data.Stats.BudgetUsed))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 61, Col: 87}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = BudgetItem("Marketing", 82, formatCurrency(4100), formatCurrency(5000)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></div><div class=\"mt-2 h-2 w-full rounded-full bg-slate-100 overflow-hidden\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = BudgetItem("Travel", 55, formatCurrency(2750), formatCurrency(5000)).Render(ctx, templ_7745c5c3_Buffer)
+			var templ_7745c5c3_Var4 = []any{"h-full rounded-full transition-all",
+				templ.KV("bg-emerald-500", data.Stats.BudgetUsed < 75),
+				templ.KV("bg-amber-500", data.Stats.BudgetUsed >= 75 && data.Stats.BudgetUsed < 90),
+				templ.KV("bg-rose-500", data.Stats.BudgetUsed >= 90)}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = BudgetItem("Payroll", 91, formatCurrency(36400), formatCurrency(40000)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div></div></div><!-- Recent Transactions Section --> <div class=\"mt-6 rounded-md border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-200 px-6 py-4\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between\"><div><h2 class=\"text-base font-semibold text-slate-900\">Recent Transactions</h2><p class=\"text-sm text-slate-500\">Your latest financial activity</p></div><!-- Search with HTMX --><div class=\"relative\"><input type=\"search\" name=\"search\" placeholder=\"Filter transactions...\" hx-get=\"/api/transactions/filter\" hx-trigger=\"keyup changed delay:300ms\" hx-target=\"#transaction-rows\" hx-swap=\"innerHTML\" hx-indicator=\"#search-spinner\" class=\"w-full sm:w-64 rounded-md border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300\"> <svg class=\"absolute left-3 top-2.5 h-4 w-4 text-slate-400\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg> <svg id=\"search-spinner\" class=\"htmx-indicator absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg></div></div></div><!-- Transactions Table --><div class=\"overflow-x-auto\"><table class=\"w-full border-collapse\"><thead><tr class=\"bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500\"><th class=\"px-6 py-3 border-b border-slate-200\">Date</th><th class=\"px-6 py-3 border-b border-slate-200\">Description</th><th class=\"px-6 py-3 border-b border-slate-200\">Category</th><th class=\"px-6 py-3 border-b border-slate-200\">Merchant</th><th class=\"px-6 py-3 border-b border-slate-200 text-right\">Amount</th><th class=\"px-6 py-3 border-b border-slate-200\">Status</th></tr></thead> <tbody id=\"transaction-rows\" class=\"divide-y divide-slate-100\">")
+			var templ_7745c5c3_Var5 string
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var4).String())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" style=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var6 string
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("width: %v%%", data.Stats.BudgetUsed))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 69, Col: 64}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"></div></div></div></div></div><!-- Recent Transactions Section --> <div class=\"mt-6 rounded-md border border-slate-200 bg-white shadow-sm\"><div class=\"border-b border-slate-200 px-6 py-4\"><div class=\"flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between\"><div><h2 class=\"text-base font-semibold text-slate-900\">Recent Transactions</h2><p class=\"text-sm text-slate-500\">Your latest financial activity</p></div><!-- Search with HTMX --><div class=\"relative\"><input type=\"search\" name=\"search\" placeholder=\"Filter transactions...\" hx-get=\"/api/transactions/filter\" hx-trigger=\"keyup changed delay:300ms\" hx-target=\"#transaction-rows\" hx-swap=\"innerHTML\" hx-indicator=\"#search-spinner\" class=\"w-full sm:w-64 rounded-md border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300\"> <svg class=\"absolute left-3 top-2.5 h-4 w-4 text-slate-400\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z\"></path></svg> <svg id=\"search-spinner\" class=\"htmx-indicator absolute right-3 top-2.5 h-4 w-4 animate-spin text-slate-400\" fill=\"none\" viewBox=\"0 0 24 24\"><circle class=\"opacity-25\" cx=\"12\" cy=\"12\" r=\"10\" stroke=\"currentColor\" stroke-width=\"4\"></circle> <path class=\"opacity-75\" fill=\"currentColor\" d=\"M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\"></path></svg></div></div></div><!-- Transactions Table --><div class=\"overflow-x-auto\"><table class=\"w-full text-sm text-slate-600\"><thead><tr class=\"bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500\"><th class=\"px-6 py-3 border-b border-slate-200\">Date</th><th class=\"px-6 py-3 border-b border-slate-200\">Description</th><th class=\"px-6 py-3 border-b border-slate-200\">Category</th><th class=\"px-6 py-3 border-b border-slate-200\">Merchant</th><th class=\"px-6 py-3 border-b border-slate-200 text-right\">Amount</th><th class=\"px-6 py-3 border-b border-slate-200\">Status</th></tr></thead> <tbody id=\"transaction-rows\" class=\"divide-y divide-slate-100\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -99,20 +137,20 @@ func Dashboard(data models.DashboardData, navItems []models.NavItem) templ.Compo
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</tbody></table></div><!-- Table Footer --><div class=\"border-t border-slate-200 px-6 py-4\"><div class=\"flex items-center justify-between text-sm\"><span class=\"text-slate-500\">Showing ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</tbody></table></div><!-- Table Footer --><div class=\"border-t border-slate-200 px-6 py-4\"><div class=\"flex items-center justify-between text-sm\"><span class=\"text-slate-500\">Showing ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(data.Transactions)))
+			var templ_7745c5c3_Var7 string
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", len(data.Transactions)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 113, Col: 85}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 131, Col: 85}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " transactions</span> <a href=\"/transactions\" class=\"font-medium text-slate-900 hover:text-slate-700\">View all transactions →</a></div></div></div><!-- Chart.js Initialization --> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " transactions</span> <a href=\"/transactions\" class=\"font-medium text-slate-900 hover:text-slate-700\">View all transactions →</a></div></div></div><!-- Chart.js Initialization --> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -122,7 +160,7 @@ func Dashboard(data models.DashboardData, navItems []models.NavItem) templ.Compo
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Base("Dashboard", navItems).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Base("Dashboard", navItems, data).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -130,7 +168,7 @@ func Dashboard(data models.DashboardData, navItems []models.NavItem) templ.Compo
 	})
 }
 
-func KPICard(title string, value string, change float64, isPositiveGood bool, iconType string) templ.Component {
+func KPICard(title string, value string, subvalue string, change float64, isPositiveGood bool, iconType string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -146,113 +184,132 @@ func KPICard(title string, value string, change float64, isPositiveGood bool, ic
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var4 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var4 == nil {
-			templ_7745c5c3_Var4 = templ.NopComponent
+		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var8 == nil {
+			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"rounded-md border border-slate-200 bg-white p-5 shadow-sm\"><div class=\"flex items-start justify-between\"><div class=\"flex-1\"><p class=\"text-sm font-medium text-slate-500\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"rounded-md border border-slate-200 bg-white p-5 shadow-sm\"><div class=\"flex items-start justify-between\"><div class=\"flex-1\"><p class=\"text-sm font-medium text-slate-500\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(title)
+		var templ_7745c5c3_Var9 string
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 130, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 148, Col: 57}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</p><p class=\"mt-2 text-2xl font-semibold text-slate-900\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(value)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 131, Col: 65}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if change != 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"mt-2 flex items-center gap-1 text-xs font-medium\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if (change > 0 && isPositiveGood) || (change < 0 && !isPositiveGood) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<svg class=\"h-4 w-4 text-emerald-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M7 11l5-5m0 0l5 5m-5-5v12\"></path></svg> <span class=\"text-emerald-600\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var7 string
-				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(formatPercent(absFloat(change)))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 138, Col: 71}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<svg class=\"h-4 w-4 text-rose-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M17 13l-5 5m0 0l-5-5m5 5V6\"></path></svg> <span class=\"text-rose-600\">")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var8 string
-				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(formatPercent(absFloat(change)))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 143, Col: 68}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span class=\"text-slate-400\">vs last month</span></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var9 = []any{"flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
-			templ.KV("bg-emerald-50", iconType == "balance" || iconType == "savings"),
-			templ.KV("bg-slate-100", iconType == "spend" || iconType == "budget")}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var9...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</p><p class=\"mt-2 text-2xl font-semibold text-slate-900\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var9).String())
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 149, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if subvalue != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"mt-0.5 text-xs text-slate-400\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var11 string
+			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(subvalue)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 151, Col: 56}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if change != 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"mt-2 flex items-center gap-1 text-xs font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if (change > 0 && isPositiveGood) || (change < 0 && !isPositiveGood) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<svg class=\"h-4 w-4 text-emerald-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M7 11l5-5m0 0l5 5m-5-5v12\"></path></svg> <span class=\"text-emerald-600\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var12 string
+				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(formatPercent(absFloat(change)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 159, Col: 71}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<svg class=\"h-4 w-4 text-rose-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M17 13l-5 5m0 0l-5-5m5 5V6\"></path></svg> <span class=\"text-rose-600\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var13 string
+				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(formatPercent(absFloat(change)))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 164, Col: 68}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<span class=\"text-slate-400\">vs last month</span></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var14 = []any{"flex h-10 w-10 shrink-0 items-center justify-center rounded-md",
+			templ.KV("bg-emerald-50", iconType == "balance" || iconType == "savings"),
+			templ.KV("bg-slate-100", iconType == "spend" || iconType == "budget")}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var14...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var15 string
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var14).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -260,7 +317,7 @@ func KPICard(title string, value string, change float64, isPositiveGood bool, ic
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -284,34 +341,34 @@ func KPIIcon(iconType string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var11 == nil {
-			templ_7745c5c3_Var11 = templ.NopComponent
+		templ_7745c5c3_Var16 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var16 == nil {
+			templ_7745c5c3_Var16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		switch iconType {
 		case "balance":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<svg class=\"h-5 w-5 text-emerald-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<svg class=\"h-5 w-5 text-emerald-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		case "spend":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<svg class=\"h-5 w-5 text-slate-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<svg class=\"h-5 w-5 text-slate-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		case "budget":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<svg class=\"h-5 w-5 text-slate-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<svg class=\"h-5 w-5 text-slate-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		case "savings":
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<svg class=\"h-5 w-5 text-emerald-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<svg class=\"h-5 w-5 text-emerald-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		default:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<svg class=\"h-5 w-5 text-slate-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<svg class=\"h-5 w-5 text-slate-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z\"></path></svg>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -336,89 +393,89 @@ func BudgetItem(name string, percent float64, spent string, total string) templ.
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var12 == nil {
-			templ_7745c5c3_Var12 = templ.NopComponent
+		templ_7745c5c3_Var17 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var17 == nil {
+			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div><div class=\"flex items-center justify-between text-sm mb-2\"><span class=\"font-medium text-slate-700\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(name)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 187, Col: 50}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</span> <span class=\"text-slate-500\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(spent)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 188, Col: 39}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " / ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(total)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 188, Col: 51}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</span></div><div class=\"h-2 w-full rounded-full bg-slate-100 overflow-hidden\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var16 = []any{"h-full rounded-full transition-all",
-			templ.KV("bg-emerald-500", percent < 75),
-			templ.KV("bg-amber-500", percent >= 75 && percent < 90),
-			templ.KV("bg-rose-500", percent >= 90)}
-		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var16...)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var16).String())
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" style=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div><div class=\"flex items-center justify-between text-sm mb-1.5\"><span class=\"font-medium text-slate-700\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
-		templ_7745c5c3_Var18, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("width: %v%%", percent))
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 196, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 208, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\"></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span> <span class=\"text-slate-500 text-xs\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var19 string
+		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(spent)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 209, Col: 47}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, " / ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var20 string
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(total)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 209, Col: 59}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span></div><div class=\"h-1.5 w-full rounded-full bg-slate-100 overflow-hidden\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var21 = []any{"h-full rounded-full transition-all",
+			templ.KV("bg-emerald-500", percent < 75),
+			templ.KV("bg-amber-500", percent >= 75 && percent < 90),
+			templ.KV("bg-rose-500", percent >= 90)}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var21...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var22 string
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var21).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\" style=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var23 string
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("width: %v%%", percent))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 217, Col: 47}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -442,173 +499,173 @@ func TransactionRows(transactions []models.Transaction) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var19 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var19 == nil {
-			templ_7745c5c3_Var19 = templ.NopComponent
+		templ_7745c5c3_Var24 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var24 == nil {
+			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		for _, txn := range transactions {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<tr class=\"hover:bg-slate-50 transition-colors\"><td class=\"whitespace-nowrap px-6 py-4 text-sm text-slate-500\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<tr class=\"hover:bg-slate-50 transition-colors\"><td class=\"whitespace-nowrap px-6 py-4 text-sm text-slate-500\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Date.Format("Jan 02, 2006"))
+			var templ_7745c5c3_Var25 string
+			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(formatDateIndian(txn.Date))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 206, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 227, Col: 32}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</td><td class=\"px-6 py-4\"><p class=\"text-sm font-medium text-slate-900\">")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var21 string
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Description)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 209, Col: 67}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</td><td class=\"px-6 py-4\"><p class=\"text-sm font-medium text-slate-900\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p><p class=\"text-xs text-slate-500\">")
+			var templ_7745c5c3_Var26 string
+			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Description)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 230, Col: 67}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var22 string
-			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(txn.ID)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 210, Col: 46}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</p><p class=\"text-xs text-slate-500\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</p></td><td class=\"whitespace-nowrap px-6 py-4\"><span class=\"inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600\">")
+			var templ_7745c5c3_Var27 string
+			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(txn.ID)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 231, Col: 46}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var23 string
-			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Category)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 214, Col: 19}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span></td><td class=\"whitespace-nowrap px-6 py-4 text-sm text-slate-500\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var24 string
-			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Merchant)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 218, Col: 18}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</td><td class=\"whitespace-nowrap px-6 py-4 text-sm text-right font-medium\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if txn.Type == "credit" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span class=\"text-emerald-600\">+")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var25 string
-				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(formatCurrency(txn.Amount))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 222, Col: 65}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span class=\"text-slate-900\">-")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var26 string
-				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(formatCurrency(txn.Amount))
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 224, Col: 63}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</span>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</td><td class=\"whitespace-nowrap px-6 py-4\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var27 = []any{"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-				templ.KV("bg-emerald-50 text-emerald-700", txn.Status == "completed"),
-				templ.KV("bg-amber-50 text-amber-700", txn.Status == "pending"),
-				templ.KV("bg-rose-50 text-rose-700", txn.Status == "failed")}
-			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var27...)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<span class=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</p></td><td class=\"whitespace-nowrap px-6 py-4\"><span class=\"inline-flex items-center rounded-sm bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
-			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var27).String())
+			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Category)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 235, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span></td><td class=\"whitespace-nowrap px-6 py-4 text-sm text-slate-500\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if txn.Status == "completed" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<span class=\"mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500\"></span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else if txn.Status == "pending" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"mr-1 h-1.5 w-1.5 rounded-full bg-amber-500\"></span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<span class=\"mr-1 h-1.5 w-1.5 rounded-full bg-rose-500\"></span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
 			var templ_7745c5c3_Var29 string
-			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Status)
+			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Merchant)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 239, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 239, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</span></td></tr>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</td><td class=\"whitespace-nowrap px-6 py-4 text-sm text-right font-medium\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if txn.Type == "credit" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<span class=\"text-emerald-600\">+")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var30 string
+				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(formatINR(txn.Amount))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 243, Col: 60}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"text-slate-900\">-")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var31 string
+				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(formatINR(txn.Amount))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 245, Col: 58}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</td><td class=\"whitespace-nowrap px-6 py-4\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var32 = []any{"inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium",
+				templ.KV("bg-emerald-50 text-emerald-700", txn.Status == "completed"),
+				templ.KV("bg-amber-50 text-amber-700", txn.Status == "pending"),
+				templ.KV("bg-rose-50 text-rose-700", txn.Status == "failed")}
+			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var32...)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<span class=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var33 string
+			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var32).String())
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 1, Col: 0}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if txn.Status == "completed" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<span class=\"mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500\"></span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else if txn.Status == "pending" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<span class=\"mr-1 h-1.5 w-1.5 rounded-full bg-amber-500\"></span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<span class=\"mr-1 h-1.5 w-1.5 rounded-full bg-rose-500\"></span> ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			var templ_7745c5c3_Var34 string
+			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(txn.Status)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/dashboard.templ`, Line: 260, Col: 17}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</span></td></tr>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -633,12 +690,12 @@ func ChartScript(chart models.SpendingChart) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var30 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var30 == nil {
-			templ_7745c5c3_Var30 = templ.NopComponent
+		templ_7745c5c3_Var35 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var35 == nil {
+			templ_7745c5c3_Var35 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<script>\r\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\r\n\t\t\tconst ctx = document.getElementById('cashFlowChart').getContext('2d');\r\n\t\t\t\r\n\t\t\tconst chartData = {\r\n\t\t\t\tlabels: JSON.parse(@templ.JSONString(mustMarshal(chart.Labels))),\r\n\t\t\t\tincome: JSON.parse(@templ.JSONString(mustMarshal(chart.Income))),\r\n\t\t\t\tspend: JSON.parse(@templ.JSONString(mustMarshal(chart.Spend)))\r\n\t\t\t};\r\n\r\n\t\t\tnew Chart(ctx, {\r\n\t\t\t\ttype: 'line',\r\n\t\t\t\tdata: {\r\n\t\t\t\t\tlabels: chartData.labels,\r\n\t\t\t\t\tdatasets: [\r\n\t\t\t\t\t\t{\r\n\t\t\t\t\t\t\tlabel: 'Income',\r\n\t\t\t\t\t\t\tdata: chartData.income,\r\n\t\t\t\t\t\t\tborderColor: '#10b981',\r\n\t\t\t\t\t\t\tbackgroundColor: 'rgba(16, 185, 129, 0.1)',\r\n\t\t\t\t\t\t\tborderWidth: 2,\r\n\t\t\t\t\t\t\tfill: true,\r\n\t\t\t\t\t\t\ttension: 0.3,\r\n\t\t\t\t\t\t\tpointRadius: 0,\r\n\t\t\t\t\t\t\tpointHoverRadius: 4,\r\n\t\t\t\t\t\t\tpointHoverBackgroundColor: '#10b981'\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\t{\r\n\t\t\t\t\t\t\tlabel: 'Expenses',\r\n\t\t\t\t\t\t\tdata: chartData.spend,\r\n\t\t\t\t\t\t\tborderColor: '#94a3b8',\r\n\t\t\t\t\t\t\tbackgroundColor: 'rgba(148, 163, 184, 0.1)',\r\n\t\t\t\t\t\t\tborderWidth: 2,\r\n\t\t\t\t\t\t\tfill: true,\r\n\t\t\t\t\t\t\ttension: 0.3,\r\n\t\t\t\t\t\t\tpointRadius: 0,\r\n\t\t\t\t\t\t\tpointHoverRadius: 4,\r\n\t\t\t\t\t\t\tpointHoverBackgroundColor: '#94a3b8'\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t]\r\n\t\t\t\t},\r\n\t\t\t\toptions: {\r\n\t\t\t\t\tresponsive: true,\r\n\t\t\t\t\tmaintainAspectRatio: false,\r\n\t\t\t\t\tinteraction: {\r\n\t\t\t\t\t\tmode: 'index',\r\n\t\t\t\t\t\tintersect: false\r\n\t\t\t\t\t},\r\n\t\t\t\t\tplugins: {\r\n\t\t\t\t\t\tlegend: {\r\n\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\ttooltip: {\r\n\t\t\t\t\t\t\tbackgroundColor: '#0f172a',\r\n\t\t\t\t\t\t\ttitleColor: '#f8fafc',\r\n\t\t\t\t\t\t\tbodyColor: '#e2e8f0',\r\n\t\t\t\t\t\t\tborderColor: '#334155',\r\n\t\t\t\t\t\t\tborderWidth: 1,\r\n\t\t\t\t\t\t\tcornerRadius: 4,\r\n\t\t\t\t\t\t\tpadding: 12,\r\n\t\t\t\t\t\t\tcallbacks: {\r\n\t\t\t\t\t\t\t\tlabel: function(context) {\r\n\t\t\t\t\t\t\t\t\treturn context.dataset.label + ': $' + context.parsed.y.toLocaleString();\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t},\r\n\t\t\t\t\tscales: {\r\n\t\t\t\t\t\tx: {\r\n\t\t\t\t\t\t\tgrid: {\r\n\t\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tticks: {\r\n\t\t\t\t\t\t\t\tcolor: '#64748b',\r\n\t\t\t\t\t\t\t\tfont: {\r\n\t\t\t\t\t\t\t\t\tsize: 11\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tborder: {\r\n\t\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\ty: {\r\n\t\t\t\t\t\t\tgrid: {\r\n\t\t\t\t\t\t\t\tcolor: '#f1f5f9',\r\n\t\t\t\t\t\t\t\tdrawBorder: false\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tticks: {\r\n\t\t\t\t\t\t\t\tcolor: '#64748b',\r\n\t\t\t\t\t\t\t\tfont: {\r\n\t\t\t\t\t\t\t\t\tsize: 11\r\n\t\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\t\tcallback: function(value) {\r\n\t\t\t\t\t\t\t\t\treturn '$' + (value / 1000) + 'k';\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tborder: {\r\n\t\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\t\t\t});\r\n\t\t});\r\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<script>\r\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\r\n\t\t\tconst ctx = document.getElementById('cashFlowChart').getContext('2d');\r\n\t\t\t\r\n\t\t\tconst chartData = {\r\n\t\t\t\tlabels: JSON.parse(@templ.JSONString(mustMarshal(chart.Labels))),\r\n\t\t\t\tincome: JSON.parse(@templ.JSONString(mustMarshal(chart.Income))),\r\n\t\t\t\tspend: JSON.parse(@templ.JSONString(mustMarshal(chart.Spend)))\r\n\t\t\t};\r\n\r\n\t\t\tnew Chart(ctx, {\r\n\t\t\t\ttype: 'line',\r\n\t\t\t\tdata: {\r\n\t\t\t\t\tlabels: chartData.labels,\r\n\t\t\t\t\tdatasets: [\r\n\t\t\t\t\t\t{\r\n\t\t\t\t\t\t\tlabel: 'Income',\r\n\t\t\t\t\t\t\tdata: chartData.income,\r\n\t\t\t\t\t\t\tborderColor: '#10b981',\r\n\t\t\t\t\t\t\tbackgroundColor: 'rgba(16, 185, 129, 0.08)',\r\n\t\t\t\t\t\t\tborderWidth: 2,\r\n\t\t\t\t\t\t\tfill: true,\r\n\t\t\t\t\t\t\ttension: 0.3,\r\n\t\t\t\t\t\t\tpointRadius: 0,\r\n\t\t\t\t\t\t\tpointHoverRadius: 4,\r\n\t\t\t\t\t\t\tpointHoverBackgroundColor: '#10b981'\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\t{\r\n\t\t\t\t\t\t\tlabel: 'Expenses',\r\n\t\t\t\t\t\t\tdata: chartData.spend,\r\n\t\t\t\t\t\t\tborderColor: '#94a3b8',\r\n\t\t\t\t\t\t\tbackgroundColor: 'rgba(148, 163, 184, 0.08)',\r\n\t\t\t\t\t\t\tborderWidth: 2,\r\n\t\t\t\t\t\t\tfill: true,\r\n\t\t\t\t\t\t\ttension: 0.3,\r\n\t\t\t\t\t\t\tpointRadius: 0,\r\n\t\t\t\t\t\t\tpointHoverRadius: 4,\r\n\t\t\t\t\t\t\tpointHoverBackgroundColor: '#94a3b8'\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t]\r\n\t\t\t\t},\r\n\t\t\t\toptions: {\r\n\t\t\t\t\tresponsive: true,\r\n\t\t\t\t\tmaintainAspectRatio: false,\r\n\t\t\t\t\tinteraction: {\r\n\t\t\t\t\t\tmode: 'index',\r\n\t\t\t\t\t\tintersect: false\r\n\t\t\t\t\t},\r\n\t\t\t\t\tplugins: {\r\n\t\t\t\t\t\tlegend: {\r\n\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\ttooltip: {\r\n\t\t\t\t\t\t\tbackgroundColor: '#0f172a',\r\n\t\t\t\t\t\t\ttitleColor: '#f8fafc',\r\n\t\t\t\t\t\t\tbodyColor: '#e2e8f0',\r\n\t\t\t\t\t\t\tborderColor: '#334155',\r\n\t\t\t\t\t\t\tborderWidth: 1,\r\n\t\t\t\t\t\t\tcornerRadius: 4,\r\n\t\t\t\t\t\t\tpadding: 12,\r\n\t\t\t\t\t\t\tcallbacks: {\r\n\t\t\t\t\t\t\t\tlabel: function(context) {\r\n\t\t\t\t\t\t\t\t\tlet value = context.parsed.y;\r\n\t\t\t\t\t\t\t\t\t// Format in Lakhs for Indian notation\r\n\t\t\t\t\t\t\t\t\tif (value >= 100000) {\r\n\t\t\t\t\t\t\t\t\t\treturn context.dataset.label + ': ₹' + (value / 100000).toFixed(2) + ' L';\r\n\t\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t\t\treturn context.dataset.label + ': ₹' + value.toLocaleString('en-IN');\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t},\r\n\t\t\t\t\tscales: {\r\n\t\t\t\t\t\tx: {\r\n\t\t\t\t\t\t\tgrid: {\r\n\t\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tticks: {\r\n\t\t\t\t\t\t\t\tcolor: '#64748b',\r\n\t\t\t\t\t\t\t\tfont: {\r\n\t\t\t\t\t\t\t\t\tsize: 11\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tborder: {\r\n\t\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t},\r\n\t\t\t\t\t\ty: {\r\n\t\t\t\t\t\t\tgrid: {\r\n\t\t\t\t\t\t\t\tcolor: '#f1f5f9',\r\n\t\t\t\t\t\t\t\tdrawBorder: false\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tticks: {\r\n\t\t\t\t\t\t\t\tcolor: '#64748b',\r\n\t\t\t\t\t\t\t\tfont: {\r\n\t\t\t\t\t\t\t\t\tsize: 11\r\n\t\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\t\tcallback: function(value) {\r\n\t\t\t\t\t\t\t\t\t// Format in Lakhs\r\n\t\t\t\t\t\t\t\t\tif (value >= 100000) {\r\n\t\t\t\t\t\t\t\t\t\treturn '₹' + (value / 100000) + 'L';\r\n\t\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t\t\treturn '₹' + (value / 1000) + 'K';\r\n\t\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t\t},\r\n\t\t\t\t\t\t\tborder: {\r\n\t\t\t\t\t\t\t\tdisplay: false\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\t\t\t});\r\n\t\t});\r\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -646,8 +703,42 @@ func ChartScript(chart models.SpendingChart) templ.Component {
 	})
 }
 
-func formatCurrency(amount float64) string {
-	return fmt.Sprintf("$%.2f", amount)
+// formatINR formats a number as Indian Rupees with proper formatting
+func formatINR(amount float64) string {
+	// Indian numbering system: 1,00,000 format
+	if amount >= 10000000 { // 1 Crore+
+		return fmt.Sprintf("₹%.2f Cr", amount/10000000)
+	}
+	if amount >= 100000 { // 1 Lakh+
+		return fmt.Sprintf("₹%.2f L", amount/100000)
+	}
+	// Standard formatting for smaller amounts
+	return fmt.Sprintf("₹%.2f", amount)
+}
+
+// formatINRCompact formats amount in compact Indian notation
+func formatINRCompact(amount float64) string {
+	if amount >= 10000000 {
+		return fmt.Sprintf("₹%.1f Cr", amount/10000000)
+	}
+	if amount >= 100000 {
+		return fmt.Sprintf("₹%.1f L", amount/100000)
+	}
+	if amount >= 1000 {
+		return fmt.Sprintf("₹%.1fK", amount/1000)
+	}
+	return fmt.Sprintf("₹%.0f", amount)
+}
+
+// formatLakhs returns amount in Lakhs notation
+func formatLakhs(amount float64) string {
+	if amount >= 10000000 {
+		return fmt.Sprintf("(₹%.2f Crore)", amount/10000000)
+	}
+	if amount >= 100000 {
+		return fmt.Sprintf("(₹%.2f Lakh)", amount/100000)
+	}
+	return ""
 }
 
 func formatPercent(value float64) string {
@@ -667,6 +758,11 @@ func mustMarshal(v interface{}) string {
 		return "[]"
 	}
 	return string(b)
+}
+
+// formatDateIndian formats date in DD/MM/YYYY Indian format
+func formatDateIndian(t time.Time) string {
+	return t.Format("02/01/2006")
 }
 
 var _ = templruntime.GeneratedTemplate

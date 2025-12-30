@@ -57,3 +57,11 @@ type NavItem struct {
 	Icon     string `json:"icon"`
 	IsActive bool   `json:"is_active"`
 }
+
+// BudgetCategory represents a budget category with spending progress
+type BudgetCategory struct {
+	Name    string  `json:"name"`
+	Spent   float64 `json:"spent"`
+	Total   float64 `json:"total"`
+	Percent float64 `json:"percent"`
+}

@@ -8,110 +8,141 @@ import (
 	"time"
 )
 
-// getMockDashboardData returns mock data for the dashboard
+// getMockDashboardData returns mock data for the dashboard (Indian market)
 func getMockDashboardData() models.DashboardData {
 	return models.DashboardData{
-		UserName:     "Sarah Mitchell",
-		UserEmail:    "sarah.mitchell@company.com",
-		UserInitials: "SM",
+		UserName:     "Priya Sharma",
+		UserEmail:    "priya.sharma@company.in",
+		UserInitials: "PS",
 		Stats: models.DashboardStats{
-			TotalBalance:    284750.42,
+			TotalBalance:    2847504.25,    // ₹28.47 Lakh
 			BalanceChange:   12.5,
-			MonthlySpend:    18432.15,
+			MonthlySpend:    184321.50,     // ₹1.84 Lakh
 			SpendChange:     -8.3,
-			BudgetRemaining: 6567.85,
-			BudgetTotal:     25000.00,
+			BudgetRemaining: 65678.50,      // ₹65,678.50
+			BudgetTotal:     250000.00,     // ₹2.5 Lakh
 			BudgetUsed:      73.7,
-			TotalSavings:    45280.00,
+			TotalSavings:    452800.00,     // ₹4.52 Lakh
 			SavingsChange:   15.2,
 		},
 		Transactions: []models.Transaction{
 			{
 				ID:          "TXN-001",
 				Date:        time.Now().AddDate(0, 0, -1),
-				Description: "Office Supplies - Q4 Restock",
-				Category:    "Operations",
-				Amount:      1240.50,
+				Description: "Monthly Groceries",
+				Category:    "Groceries",
+				Amount:      8542.00,
 				Type:        "debit",
 				Status:      "completed",
-				Merchant:    "Staples Business",
+				Merchant:    "BigBasket",
 			},
 			{
 				ID:          "TXN-002",
 				Date:        time.Now().AddDate(0, 0, -1),
-				Description: "Client Payment - Invoice #4521",
-				Category:    "Revenue",
-				Amount:      15750.00,
+				Description: "Salary Credit - December",
+				Category:    "Income",
+				Amount:      185000.00,
 				Type:        "credit",
 				Status:      "completed",
-				Merchant:    "Acme Corporation",
+				Merchant:    "TechMahindra Ltd",
 			},
 			{
 				ID:          "TXN-003",
 				Date:        time.Now().AddDate(0, 0, -2),
-				Description: "Software Subscription - Annual",
-				Category:    "Technology",
-				Amount:      2999.00,
+				Description: "Electricity Bill - December",
+				Category:    "Utilities",
+				Amount:      3420.00,
 				Type:        "debit",
 				Status:      "completed",
-				Merchant:    "Atlassian",
+				Merchant:    "Tata Power",
 			},
 			{
 				ID:          "TXN-004",
 				Date:        time.Now().AddDate(0, 0, -3),
-				Description: "Travel Expenses - NYC Conference",
-				Category:    "Travel",
-				Amount:      3420.85,
+				Description: "House Rent - January",
+				Category:    "Rent",
+				Amount:      35000.00,
 				Type:        "debit",
 				Status:      "pending",
-				Merchant:    "Delta Airlines",
+				Merchant:    "Landlord Transfer",
 			},
 			{
 				ID:          "TXN-005",
 				Date:        time.Now().AddDate(0, 0, -3),
-				Description: "Consulting Fee - December",
-				Category:    "Revenue",
-				Amount:      8500.00,
-				Type:        "credit",
+				Description: "Food Delivery",
+				Category:    "Food & Dining",
+				Amount:      1250.00,
+				Type:        "debit",
 				Status:      "completed",
-				Merchant:    "Tech Solutions LLC",
+				Merchant:    "Zomato",
 			},
 			{
 				ID:          "TXN-006",
 				Date:        time.Now().AddDate(0, 0, -4),
-				Description: "Marketing Campaign - Social Ads",
-				Category:    "Marketing",
-				Amount:      4250.00,
+				Description: "Mobile Recharge",
+				Category:    "Utilities",
+				Amount:      599.00,
 				Type:        "debit",
 				Status:      "completed",
-				Merchant:    "Meta Platforms",
+				Merchant:    "Amazon Pay",
 			},
 			{
 				ID:          "TXN-007",
 				Date:        time.Now().AddDate(0, 0, -5),
-				Description: "Equipment Lease Payment",
-				Category:    "Operations",
-				Amount:      1875.00,
+				Description: "School Tuition - Q4",
+				Category:    "Tuition",
+				Amount:      45000.00,
 				Type:        "debit",
 				Status:      "completed",
-				Merchant:    "Dell Financial",
+				Merchant:    "DPS Bangalore",
 			},
 			{
 				ID:          "TXN-008",
 				Date:        time.Now().AddDate(0, 0, -5),
-				Description: "Wire Transfer - Partner Payout",
-				Category:    "Payroll",
-				Amount:      12000.00,
+				Description: "SIP Investment",
+				Category:    "Investment",
+				Amount:      25000.00,
 				Type:        "debit",
 				Status:      "completed",
-				Merchant:    "Internal Transfer",
+				Merchant:    "Zerodha",
+			},
+			{
+				ID:          "TXN-009",
+				Date:        time.Now().AddDate(0, 0, -6),
+				Description: "Petrol",
+				Category:    "Transport",
+				Amount:      4500.00,
+				Type:        "debit",
+				Status:      "completed",
+				Merchant:    "HP Petrol Pump",
+			},
+			{
+				ID:          "TXN-010",
+				Date:        time.Now().AddDate(0, 0, -7),
+				Description: "Freelance Payment",
+				Category:    "Income",
+				Amount:      50000.00,
+				Type:        "credit",
+				Status:      "completed",
+				Merchant:    "Upwork",
 			},
 		},
 		Chart: models.SpendingChart{
 			Labels: []string{"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
-			Income: []float64{42000, 38500, 45200, 52100, 48750, 55420},
-			Spend:  []float64{28500, 31200, 27800, 35400, 29100, 32150},
+			Income: []float64{185000, 192000, 185000, 235000, 190000, 235000},
+			Spend:  []float64{142000, 156000, 138000, 175000, 148000, 165000},
 		},
+	}
+}
+
+// getBudgetCategories returns budget categories with spending progress
+func getBudgetCategories() []models.BudgetCategory {
+	return []models.BudgetCategory{
+		{Name: "Groceries & Household", Spent: 15200, Total: 20000, Percent: 76},
+		{Name: "Utilities & Bills", Spent: 8500, Total: 15000, Percent: 56.7},
+		{Name: "Food & Dining", Spent: 12400, Total: 15000, Percent: 82.7},
+		{Name: "Transport", Spent: 9200, Total: 12000, Percent: 76.7},
+		{Name: "Entertainment", Spent: 4800, Total: 8000, Percent: 60},
 	}
 }
 
@@ -138,8 +169,9 @@ func getNavItems(activePath string) []models.NavItem {
 func HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	data := getMockDashboardData()
 	navItems := getNavItems("/")
+	budgets := getBudgetCategories()
 
-	component := templates.Dashboard(data, navItems)
+	component := templates.Dashboard(data, navItems, budgets)
 	component.Render(r.Context(), w)
 }
 
