@@ -1,0 +1,531 @@
+package templates
+
+import (
+	"budgetmate/models"
+	"fmt"
+	"net/url"
+)
+
+templ TransactionsPage(data models.TransactionsPageData, navItems []models.NavItem, userData models.DashboardData) {
+	@Base("Transactions", navItems, userData) {
+		<!-- Page Header with Actions -->
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+			<div>
+				<h1 class="text-xl font-semibold text-slate-900">Transactions</h1>
+				<p class="mt-1 text-sm text-slate-500">Manage and track all your financial transactions</p>
+			</div>
+			
+			<div class="flex items-center gap-3" x-data="{ modalOpen: false }">
+				<!-- Export CSV Button -->
+				<button 
+					class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
+				>
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+					</svg>
+					Export CSV
+				</button>
+
+				<!-- Add Transaction Button -->
+				<button 
+					@click="modalOpen = true"
+					class="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"
+				>
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+					</svg>
+					Add Transaction
+				</button>
+
+				<!-- Add Transaction Modal -->
+				@AddTransactionModal()
+			</div>
+		</div>
+
+		<!-- Filter Bar -->
+		<div class="rounded-md border border-slate-200 bg-white p-4 shadow-sm mb-6">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+				<!-- Search Input -->
+				<div class="relative flex-1">
+					<input 
+						type="search" 
+						name="search"
+						value={ data.SearchQuery }
+						placeholder="Search transactions by description, category, or merchant..."
+						hx-get="/api/transactions/table"
+						hx-trigger="keyup changed delay:500ms"
+						hx-target="#transactions-table-container"
+						hx-swap="innerHTML"
+						hx-include="[name='category']"
+						hx-indicator="#filter-spinner"
+						class="w-full rounded-md border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300"
+					/>
+					<svg class="absolute left-3 top-3 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+					</svg>
+					<svg id="filter-spinner" class="htmx-indicator absolute right-3 top-3 h-4 w-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+				</div>
+
+				<!-- Category Dropdown -->
+				<div class="sm:w-48">
+					<select 
+						name="category"
+						hx-get="/api/transactions/table"
+						hx-trigger="change"
+						hx-target="#transactions-table-container"
+						hx-swap="innerHTML"
+						hx-include="[name='search']"
+						class="w-full rounded-md border border-slate-200 bg-slate-50 py-2.5 px-3 text-sm text-slate-900 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300"
+					>
+						for _, cat := range data.Categories {
+							<option value={ cat } selected?={ cat == data.CategoryFilter || (data.CategoryFilter == "" && cat == "All Categories") }>
+								{ cat }
+							</option>
+						}
+					</select>
+				</div>
+
+				<!-- Filter Stats -->
+				<div class="text-sm text-slate-500">
+					<span class="font-medium text-slate-700">{ fmt.Sprintf("%d", data.TotalItems) }</span> transactions
+				</div>
+			</div>
+		</div>
+
+		<!-- Transactions Table Container -->
+		<div id="transactions-table-container">
+			@TransactionsTableContent(data)
+		</div>
+	}
+}
+
+templ TransactionsTableContent(data models.TransactionsPageData) {
+	<div class="rounded-md border border-slate-200 bg-white shadow-sm">
+		<!-- Table -->
+		<div class="overflow-x-auto">
+			<table class="w-full text-sm text-slate-600">
+				<thead class="sticky top-0 z-10">
+					<tr class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500 border-b border-slate-200">
+						<th class="px-6 py-3 bg-slate-50">Date</th>
+						<th class="px-6 py-3 bg-slate-50">Description</th>
+						<th class="px-6 py-3 bg-slate-50">Category</th>
+						<th class="px-6 py-3 bg-slate-50">Merchant</th>
+						<th class="px-6 py-3 bg-slate-50">Status</th>
+						<th class="px-6 py-3 bg-slate-50 text-right">Amount</th>
+						<th class="px-6 py-3 bg-slate-50 text-right">Actions</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-slate-100">
+					if len(data.Transactions) == 0 {
+						<tr>
+							<td colspan="7" class="px-6 py-12 text-center">
+								<div class="flex flex-col items-center">
+									<svg class="h-12 w-12 text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+									</svg>
+									<p class="text-sm font-medium text-slate-600">No transactions found</p>
+									<p class="text-xs text-slate-400 mt-1">Try adjusting your search or filter criteria</p>
+								</div>
+							</td>
+						</tr>
+					} else {
+						for _, txn := range data.Transactions {
+							@TransactionRow(txn)
+						}
+					}
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Pagination Footer -->
+		<div class="border-t border-slate-200 px-6 py-4">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<!-- Page Info -->
+				<div class="text-sm text-slate-500">
+					Showing 
+					<span class="font-medium text-slate-700">{ fmt.Sprintf("%d", getStartItem(data)) }</span>
+					to 
+					<span class="font-medium text-slate-700">{ fmt.Sprintf("%d", getEndItem(data)) }</span>
+					of 
+					<span class="font-medium text-slate-700">{ fmt.Sprintf("%d", data.TotalItems) }</span>
+					transactions
+				</div>
+
+				<!-- Pagination Controls -->
+				<div class="flex items-center gap-2">
+					if data.CurrentPage > 1 {
+						<button 
+							hx-get={ buildPaginationURL(data.SearchQuery, data.CategoryFilter, data.CurrentPage-1) }
+							hx-target="#transactions-table-container"
+							hx-swap="innerHTML"
+							class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+							</svg>
+							Previous
+						</button>
+					} else {
+						<button 
+							disabled
+							class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-400 cursor-not-allowed"
+						>
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+							</svg>
+							Previous
+						</button>
+					}
+
+					<!-- Page Numbers -->
+					<div class="flex items-center gap-1">
+						for i := 1; i <= data.TotalPages; i++ {
+							if shouldShowPage(i, data.CurrentPage, data.TotalPages) {
+								if i == data.CurrentPage {
+									<span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-slate-900 text-sm font-medium text-white">
+										{ fmt.Sprintf("%d", i) }
+									</span>
+								} else {
+									<button 
+										hx-get={ buildPaginationURL(data.SearchQuery, data.CategoryFilter, i) }
+										hx-target="#transactions-table-container"
+										hx-swap="innerHTML"
+										class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50"
+									>
+										{ fmt.Sprintf("%d", i) }
+									</button>
+								}
+							} else if isEllipsisPosition(i, data.CurrentPage, data.TotalPages) {
+								<span class="px-2 text-slate-400">...</span>
+							}
+						}
+					</div>
+
+					if data.CurrentPage < data.TotalPages {
+						<button 
+							hx-get={ buildPaginationURL(data.SearchQuery, data.CategoryFilter, data.CurrentPage+1) }
+							hx-target="#transactions-table-container"
+							hx-swap="innerHTML"
+							class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+						>
+							Next
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+							</svg>
+						</button>
+					} else {
+						<button 
+							disabled
+							class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-400 cursor-not-allowed"
+						>
+							Next
+							<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+							</svg>
+						</button>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ TransactionRow(txn models.Transaction) {
+	<tr class="hover:bg-slate-50 transition-colors" x-data="{ showActions: false }" @mouseenter="showActions = true" @mouseleave="showActions = false">
+		<td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
+			{ formatDateIndian(txn.Date) }
+		</td>
+		<td class="px-6 py-4">
+			<div class="flex flex-col">
+				<span class="text-sm font-medium text-slate-900">{ txn.Description }</span>
+				<span class="text-xs text-slate-400">{ txn.ID }</span>
+			</div>
+		</td>
+		<td class="whitespace-nowrap px-6 py-4">
+			<span class={ "inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium",
+				getCategoryColor(txn.Category) }>
+				{ txn.Category }
+			</span>
+		</td>
+		<td class="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
+			{ txn.Merchant }
+		</td>
+		<td class="whitespace-nowrap px-6 py-4">
+			<span class={ "inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium",
+				templ.KV("bg-emerald-50 text-emerald-700", txn.Status == "completed"),
+				templ.KV("bg-amber-50 text-amber-700", txn.Status == "pending"),
+				templ.KV("bg-rose-50 text-rose-700", txn.Status == "failed") }>
+				if txn.Status == "completed" {
+					<span class="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+				} else if txn.Status == "pending" {
+					<span class="mr-1 h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+				} else {
+					<span class="mr-1 h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+				}
+				{ txn.Status }
+			</span>
+		</td>
+		<td class="whitespace-nowrap px-6 py-4 text-sm text-right font-medium">
+			if txn.Type == "credit" {
+				<span class="text-emerald-600">+{ formatINR(txn.Amount) }</span>
+			} else {
+				<span class="text-rose-600">-{ formatINR(txn.Amount) }</span>
+			}
+		</td>
+		<td class="whitespace-nowrap px-6 py-4 text-right">
+			<div class="flex items-center justify-end gap-2" x-show="showActions" x-transition>
+				<button class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" title="Edit">
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+					</svg>
+				</button>
+				<button class="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Delete">
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+					</svg>
+				</button>
+			</div>
+		</td>
+	</tr>
+}
+
+templ AddTransactionModal() {
+	<!-- Modal Backdrop -->
+	<div 
+		x-show="modalOpen" 
+		x-transition:enter="transition ease-out duration-200"
+		x-transition:enter-start="opacity-0"
+		x-transition:enter-end="opacity-100"
+		x-transition:leave="transition ease-in duration-150"
+		x-transition:leave-start="opacity-100"
+		x-transition:leave-end="opacity-0"
+		class="fixed inset-0 z-50 bg-slate-900/50"
+		@click="modalOpen = false"
+	></div>
+
+	<!-- Modal Content -->
+	<div 
+		x-show="modalOpen"
+		x-transition:enter="transition ease-out duration-200"
+		x-transition:enter-start="opacity-0 scale-95"
+		x-transition:enter-end="opacity-100 scale-100"
+		x-transition:leave="transition ease-in duration-150"
+		x-transition:leave-start="opacity-100 scale-100"
+		x-transition:leave-end="opacity-0 scale-95"
+		class="fixed inset-0 z-50 flex items-center justify-center p-4"
+		@click.away="modalOpen = false"
+	>
+		<div class="w-full max-w-md rounded-md bg-white shadow-xl" @click.stop>
+			<!-- Modal Header -->
+			<div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+				<h3 class="text-lg font-semibold text-slate-900">Add New Transaction</h3>
+				<button @click="modalOpen = false" class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+					</svg>
+				</button>
+			</div>
+
+			<!-- Modal Body -->
+			<form class="p-6 space-y-4">
+				<!-- Transaction Type -->
+				<div>
+					<label class="block text-sm font-medium text-slate-700 mb-2">Transaction Type</label>
+					<div class="flex gap-4">
+						<label class="flex items-center gap-2 cursor-pointer">
+							<input type="radio" name="type" value="debit" checked class="h-4 w-4 text-slate-900 border-slate-300 focus:ring-slate-500"/>
+							<span class="text-sm text-slate-600">Expense (Debit)</span>
+						</label>
+						<label class="flex items-center gap-2 cursor-pointer">
+							<input type="radio" name="type" value="credit" class="h-4 w-4 text-slate-900 border-slate-300 focus:ring-slate-500"/>
+							<span class="text-sm text-slate-600">Income (Credit)</span>
+						</label>
+					</div>
+				</div>
+
+				<!-- Amount -->
+				<div>
+					<label for="amount" class="block text-sm font-medium text-slate-700 mb-1">Amount (₹)</label>
+					<div class="relative">
+						<span class="absolute left-3 top-2.5 text-slate-500">₹</span>
+						<input 
+							type="number" 
+							id="amount" 
+							name="amount"
+							step="0.01"
+							placeholder="0.00"
+							class="w-full rounded-md border border-slate-200 py-2.5 pl-8 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-300"
+						/>
+					</div>
+				</div>
+
+				<!-- Category -->
+				<div>
+					<label for="modal-category" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+					<select 
+						id="modal-category" 
+						name="category"
+						class="w-full rounded-md border border-slate-200 py-2.5 px-3 text-sm text-slate-900 focus:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-300"
+					>
+						<option value="">Select a category</option>
+						<option value="Groceries">Groceries</option>
+						<option value="Utilities">Utilities</option>
+						<option value="Rent">Rent</option>
+						<option value="Food & Dining">Food & Dining</option>
+						<option value="Transport">Transport</option>
+						<option value="Tuition">Tuition</option>
+						<option value="Investment">Investment</option>
+						<option value="EMI">EMI</option>
+						<option value="Shopping">Shopping</option>
+						<option value="Entertainment">Entertainment</option>
+						<option value="Insurance">Insurance</option>
+						<option value="Healthcare">Healthcare</option>
+						<option value="Income">Income</option>
+					</select>
+				</div>
+
+				<!-- Description -->
+				<div>
+					<label for="description" class="block text-sm font-medium text-slate-700 mb-1">Description</label>
+					<input 
+						type="text" 
+						id="description" 
+						name="description"
+						placeholder="Enter transaction description"
+						class="w-full rounded-md border border-slate-200 py-2.5 px-3 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-300"
+					/>
+				</div>
+
+				<!-- Merchant -->
+				<div>
+					<label for="merchant" class="block text-sm font-medium text-slate-700 mb-1">Merchant / Payee</label>
+					<input 
+						type="text" 
+						id="merchant" 
+						name="merchant"
+						placeholder="e.g., Zomato, BigBasket, HDFC Bank"
+						class="w-full rounded-md border border-slate-200 py-2.5 px-3 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-300"
+					/>
+				</div>
+
+				<!-- Date -->
+				<div>
+					<label for="date" class="block text-sm font-medium text-slate-700 mb-1">Date</label>
+					<input 
+						type="date" 
+						id="date" 
+						name="date"
+						class="w-full rounded-md border border-slate-200 py-2.5 px-3 text-sm text-slate-900 focus:border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-300"
+					/>
+				</div>
+			</form>
+
+			<!-- Modal Footer -->
+			<div class="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+				<button 
+					@click="modalOpen = false"
+					type="button"
+					class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+				>
+					Cancel
+				</button>
+				<button 
+					type="submit"
+					class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+				>
+					Add Transaction
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+// Helper functions for the template
+func getStartItem(data models.TransactionsPageData) int {
+	if data.TotalItems == 0 {
+		return 0
+	}
+	return (data.CurrentPage-1)*data.PerPage + 1
+}
+
+func getEndItem(data models.TransactionsPageData) int {
+	end := data.CurrentPage * data.PerPage
+	if end > data.TotalItems {
+		return data.TotalItems
+	}
+	return end
+}
+
+func buildPaginationURL(search, category string, page int) string {
+	params := url.Values{}
+	if search != "" {
+		params.Set("search", search)
+	}
+	if category != "" && category != "All Categories" {
+		params.Set("category", category)
+	}
+	params.Set("page", fmt.Sprintf("%d", page))
+	return "/api/transactions/table?" + params.Encode()
+}
+
+func shouldShowPage(pageNum, currentPage, totalPages int) bool {
+	if totalPages <= 7 {
+		return true
+	}
+	if pageNum == 1 || pageNum == totalPages {
+		return true
+	}
+	if pageNum >= currentPage-1 && pageNum <= currentPage+1 {
+		return true
+	}
+	return false
+}
+
+func isEllipsisPosition(pageNum, currentPage, totalPages int) bool {
+	if totalPages <= 7 {
+		return false
+	}
+	if pageNum == 2 && currentPage > 4 {
+		return true
+	}
+	if pageNum == totalPages-1 && currentPage < totalPages-3 {
+		return true
+	}
+	return false
+}
+
+func getCategoryColor(category string) string {
+	switch category {
+	case "Income":
+		return "bg-emerald-50 text-emerald-700"
+	case "Groceries":
+		return "bg-lime-50 text-lime-700"
+	case "Utilities":
+		return "bg-sky-50 text-sky-700"
+	case "Rent":
+		return "bg-violet-50 text-violet-700"
+	case "Food & Dining":
+		return "bg-orange-50 text-orange-700"
+	case "Transport":
+		return "bg-cyan-50 text-cyan-700"
+	case "Tuition":
+		return "bg-indigo-50 text-indigo-700"
+	case "Investment":
+		return "bg-teal-50 text-teal-700"
+	case "EMI":
+		return "bg-rose-50 text-rose-700"
+	case "Shopping":
+		return "bg-pink-50 text-pink-700"
+	case "Entertainment":
+		return "bg-purple-50 text-purple-700"
+	case "Insurance":
+		return "bg-amber-50 text-amber-700"
+	case "Healthcare":
+		return "bg-red-50 text-red-700"
+	default:
+		return "bg-slate-100 text-slate-600"
+	}
+}

@@ -65,3 +65,16 @@ type BudgetCategory struct {
 	Total   float64 `json:"total"`
 	Percent float64 `json:"percent"`
 }
+
+// TransactionsPageData holds all data needed for the transactions page
+type TransactionsPageData struct {
+	Transactions   []Transaction `json:"transactions"`
+	Categories     []string      `json:"categories"`
+	CurrentPage    int           `json:"current_page"`
+	TotalPages     int           `json:"total_pages"`
+	TotalItems     int           `json:"total_items"`
+	PerPage        int           `json:"per_page"`
+	SearchQuery    string        `json:"search_query"`
+	CategoryFilter string        `json:"category_filter"`
+}
+
